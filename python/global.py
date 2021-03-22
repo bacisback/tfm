@@ -14,7 +14,7 @@ import time
 import sys
 import os
 
-datanames_csvfiles = {"MSS": './../MSS_vid/data/train.csv',
+datanames_csvfiles = {"MSS": './../MSS_vids/data/train.csv',
                       "Kitti": "./../Kitti/training/train.csv",
                       "Cityscapes": "./../CityScapes/train.csv"}
 
@@ -78,7 +78,7 @@ class training:
                 outputs = self.model(inputs)
                 if self.DL3:
                     outputs = outputs["out"]
-                print(outputs, np.min(labels.cpu().numpy()))
+                #print(outputs, np.min(labels.cpu().numpy()))
                 loss = self.criterion(outputs, labels.squeeze(1))
                 
                 loss.backward()
@@ -94,7 +94,7 @@ class training:
             print("Finish epoch {}, time elapsed {}".format(epoch, time.time() - ts))
             torch.save(self.model, self.model_path)
 
-            self.val(epoch)
+            self.val()
 
 
     def val(self):
