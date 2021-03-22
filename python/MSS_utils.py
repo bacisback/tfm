@@ -16,7 +16,7 @@ import re
 #############################
 	# global variables #
 #############################
-root_dir          = "./../../MSS_vid/"
+root_dir          = "./../MSS_vids/"
 video_dir         = os.path.join(root_dir, "Videos")    # videos
 data_dir          = os.path.join(root_dir, "data/")      # Data for train and test
 images_dir        = os.path.join(data_dir, "images/")    # train label
@@ -95,6 +95,9 @@ def trim_video():
 		cap= cv2.VideoCapture(filename_sem)
 
 		while(cap.isOpened()):
+			if i%25 != 0:
+				i+=1
+				continue
 			ret, frame = cap.read()
 			if ret == False:
 				break
@@ -109,6 +112,9 @@ def trim_video():
 		cap= cv2.VideoCapture(filename_dat)
 		while(cap.isOpened()):
 			ret, frame = cap.read()
+			if i%25 != 0:
+				i+=1
+				continue
 			if ret == False:
 				break
 			image_name = os.path.join(category_dir_images, name[9:-8] + str(i))
@@ -198,5 +204,5 @@ def parse_labels():
 		category_csv.close()
 	total.close()
 if __name__ == '__main__':
-	#trim_video()
+	trim_video()
 	parse_labels()

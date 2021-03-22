@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 import matplotlib.image as mpimg
 import numpy as np
 import scipy.misc
+from PIL import Image
 import random
 import os
 
@@ -14,7 +15,7 @@ import os
 #############################
     # global variables #
 #############################
-root_dir  = "CityScapes/"
+root_dir  = "./../CityScapes/"
 
 label_dir = os.path.join(root_dir, "gtFine")
 train_dir = os.path.join(label_dir, "train")
@@ -84,7 +85,10 @@ labels = [
     Label(  'bicycle'              , 33 ,       19 , 'vehicle'         , 7       , True         , False        , (119, 11, 32) ),
     Label(  'license plate'        , -1 ,       -1 , 'vehicle'         , 7       , False        , True         , (  0,  0,142) ),
 ]
-
+MSS_translate = {-1:0, 255:0, 1:1, 2:2, 3:3, 4:3,
+                 5:3, 6:6, 7:7, 8:5, 9:8, 10:1, 11:9,
+                 12:10, 13:10, 14:11, 15:12, 16:12,
+                 17:12, 18:11, 19:11}
 
 def parse_label():
     # change label to class index
@@ -95,7 +99,7 @@ def parse_label():
         idx   = obj.trainId
         label = obj.name
         color = obj.color
-        color2index[color] = idx
+        color2index[color] = MSS_translate[idx]
 
     # parse train, val, test data    
     for label_dir, index_dir, csv_file in zip([train_dir, val_dir, test_dir], [train_idx_dir, val_idx_dir, test_idx_dir], [train_file, val_file, test_file]):
@@ -120,7 +124,7 @@ def parse_label():
                     continue
                 print("Parse %s" % (filename))
                 img = os.path.join(city_dir, filename)
-                img = scipy.misc.imread(img, mode='RGB')
+                img = np.asarray(Image.open(img).convert('RGB'))
                 height, weight, _ = img.shape
         
                 idx_mat = np.zeros((height, weight))

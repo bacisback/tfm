@@ -16,7 +16,7 @@ import re
 #############################
 	# global variables #
 #############################
-root_dir          = "./../../Kitti/"
+root_dir          = "./../Kitti/training/"
 images_dir        = os.path.join(root_dir, "image_2")    # train images
 images2_dir       = os.path.join(root_dir, "images")    # train images
 semantic_dir      = os.path.join(root_dir, "semantic_rgb")    # train semantic
@@ -85,11 +85,11 @@ def parse_label():
 		filename_img = os.path.join(images_dir , name)
 		filename_sem = os.path.join(semantic_dir, name)
         
-		frame = Image.open(filename_img).resize((480, 640), Image.NEAREST)
+		frame = Image.open(filename_img)
 		filename_img = os.path.join(images2_dir, name)
 		frame.save(filename_img, 'png')
 
-		frame = np.asarray(Image.open(filename_sem).convert('RGB').resize((480, 640),Image.NEAREST))
+		frame = np.asarray(Image.open(filename_sem).convert('RGB'))
 		height, weight, _ = frame.shape
 		idx_mat = np.zeros((height, weight))
 		for h in range(height):
