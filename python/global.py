@@ -1,6 +1,6 @@
 
 import argparse 
-from Cityscapes_loader import CityScapesDataset
+from loader import loader
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -15,20 +15,33 @@ import sys
 import os
 
 datanames_csvfiles = {"MSS": './../MSS_vid/data/train.csv',
-                      "Kitti": "./../Kitti/train.csv",
+                      "Kitti": "./../Kitti/training/train.csv",
                       "Cityscapes": "./../CityScapes/train.csv"}
 
+batch_size = 8
+epochs     = 5
+lr         = 1e-4
+momentum   = 0
+w_decay    = 2.4e-5
+step_size  = 50
+gamma      = 0.5
 
 
 class training:
     def __init__(self, train, test, model, plot):
-        self.train_data = CityScapesDataset(csv_file=datanames_csvfiles[train],
+        train_data = loader(csv_file=datanames_csvfiles[train],
                                   phase='train')
-        #self.test_data  = DataSet(csv_file=datanames_csvfiles[test],
-        #                          phase='test')
+        test_data  = loader(csv_file=datanames_csvfiles[test],
+                                  phase='test')                      
+        self.train_data = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=4)
+        self.test_data  = DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=4)
         self.use_gpu    = torch.cuda.is_available()
         self.num_gpu    = list(range(torch.cuda.device_count()))
+      
+        weights = torch.Tensor([[0.9999, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 0.9439, 0.1106, 1.0000,
+         1.0000, 0.9999, 1.0000, 0.9455]])
 
+        self.criterion = nn.CrossEntropyLoss(weight=weights.cuda())
         self.model_dir  = "./models"
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
@@ -40,34 +53,40 @@ class training:
             self.model_path = model_file
         else:
             if self.DL3:
-                self.model  =  torch.load("./models/deeplabv3scratch")
+                self.model  =  torch.load("./models/DLscratch")
             self.model_path = os.path.join("./models/", model)
         if self.use_gpu:
             self.model = self.model.cuda()
+           
 
         
 
 
 
     def train(self, epochs):
+        optimizer = optim.RMSprop(self.model.parameters(), lr=lr, momentum=momentum, weight_decay=w_decay)
+        scheduler = lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)  # decay LR by a
+
         for epoch in range(epochs):
 
             ts = time.time()
             for iter, batch in enumerate(self.train_data):
                 optimizer.zero_grad()
 
-                inputs, labels = Variable(batch['X']), Variable(batch['Y'])
+                inputs, labels = Variable(batch['X'].cuda()), Variable(batch['Y'].cuda())
 
                 outputs = self.model(inputs)
                 if self.DL3:
                     outputs = outputs["out"]
-                loss = criterion(outputs, labels.cuda())
+                print(outputs, np.min(labels.cpu().numpy()))
+                loss = self.criterion(outputs, labels.squeeze(1))
+                
                 loss.backward()
                 optimizer.step()
                 
 
                 
-                if iter % 1000 == 0:
+                if iter % 100 == 0:
                     print("epoch{}, iter{}, loss: {}".format(epoch, iter, loss))
 
             scheduler.step()
