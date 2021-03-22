@@ -51,7 +51,7 @@ class DeNormalize(object):
             t.mul_(s).add_(m)
         return tensor
 
-class Task1_loader(Dataset):
+class loader(Dataset):
 
     def __init__(self, csv_file, phase, size=224):
         self.data            = pd.read_csv(csv_file)
@@ -166,9 +166,9 @@ class Task1_loader(Dataset):
 
 
 if __name__ == "__main__":
-    root_dir   = "/home/roberto/Documentos/master/tfm/code/networks/MSS_vid/data/"
+    root_dir   = "./../CityScapes/"
     train_file = os.path.join(root_dir, "train.csv")
-    train_data = Task1_loader(csv_file=train_file, phase='train')
+    train_data = loader(csv_file=train_file, phase='train')
 
     # show a batch
     batch_size = 4
