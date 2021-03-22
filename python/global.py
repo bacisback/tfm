@@ -14,7 +14,7 @@ import time
 import sys
 import os
 
-datanames_csvfiles = {"MSS": './../MSS_vid/data/train.csv',
+datanames_csvfiles = {"MSS": './../MSS_vids/data/train.csv',
                       "Kitti": "./../Kitti/train.csv",
                       "Cityscapes": "./../CityScapes/train.csv"}
 
