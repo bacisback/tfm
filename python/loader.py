@@ -39,8 +39,9 @@ from MSS_utils import index2color
 
 
 means=np.array([86.5628,86.6691,86.7348]) / 255
+means_K = np.array([0.39, 0.39, 0.38])
 std=[0.229, 0.224, 0.225]
-
+std_K = [1.33, 1.43, 1.44]
 class DeNormalize(object):
     def __init__(self, mean, std):
         self.mean = mean
@@ -57,7 +58,12 @@ class loader(Dataset):
         self.data            = pd.read_csv(csv_file)
         self.phase           = phase
         self.size            = size
-        self.transform_input = transforms.Compose([
+        self.transform_MSS = transforms.Compose([
+                                    transforms.ColorJitter(brightness=0.41, contrast=0.41, saturation=0.25, hue=0.1),
+                                    transforms.ToTensor(),
+                                    transforms.Normalize(means, std),
+                                ])
+        self.transform_Kitti = transforms.Compose([
                                     transforms.ToTensor(),
                                     transforms.Normalize(means, std),
                                 ])
@@ -124,8 +130,10 @@ class loader(Dataset):
             # TO FILL:trasnform test data
             img, mask = self.test_transform(input_image, mask)
 
-        if self.transform_input is not None:
-            img = self.transform_input(img)
+        if "MSS" in img_name:
+            img = self.transform_MSS(img)
+        else:
+            img = self.transform_Kitti(img)
         if self.transform_mask is not None:
             mask = 255*self.transform_mask(mask)
     
@@ -166,17 +174,18 @@ class loader(Dataset):
 
 
 if __name__ == "__main__":
-    root_dir   = "./../CityScapes/"
+    root_dir   = "./../Kitti/training/"
     train_file = os.path.join(root_dir, "train.csv")
     train_data = loader(csv_file=train_file, phase='train')
 
     # show a batch
     batch_size = 4
-    for i in range(batch_size):
-        sample = train_data[i]
-        print(i, sample['X'].size(), sample['Y'].size())
+
 
     dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=False, num_workers=4)
     for i, batch in enumerate(dataloader):
+        #np_b = batch['X'].numpy()
+        #np_b = np_b.reshape((40,3,224,224))
+        #print(np.std(np_b[:,0,:,:]),np.std(np_b[:,1,:,:]),np.std(np_b[:,2,:,:]),np_b.shape)
         train_data.show_batch(batch)
 

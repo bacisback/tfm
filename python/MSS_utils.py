@@ -50,7 +50,7 @@ labels = [ # name                      id       color
 	]
 
 color2index = {}
-index2color = {}
+index2color = {19:(  0,  0,  128)}
 colors = []
 id_list = []
 
