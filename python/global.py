@@ -82,8 +82,7 @@ def show_batch(batch, name, model, flag):
     plt.title('Output')
     plt.savefig(name+"output.png")
 
-datanames_csvfiles = {
-                      "Cityscapes": "./../CityScapes/train.csv",
+datanames_csvfiles = {"Cityscapes": "./../CityScapes/train.csv",
                       "Coche": './../MSS_vids/data/images/Coche.csv',
                       
                       "Kitti": "./../Kitti/training/train.csv",

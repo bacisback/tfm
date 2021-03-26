@@ -55,11 +55,17 @@ class DeNormalize(object):
 class loader(Dataset):
 
     def __init__(self, csv_file, phase, size=224):
-        self.data            = pd.read_csv(csv_file)
+        if isinstance(csv_file, dict):
+            self.data = pd.DataFrame(columns=['img', 'label'])
+            for key in csv_file:
+                df = pd.read_csv(key)
+                self.data.append(df.sample(frac = csv_file[key], random_state=0))
+        else:
+            self.data            = pd.read_csv(csv_file)
         self.phase           = phase
         self.size            = size
         self.transform_MSS = transforms.Compose([
-                                    transforms.ColorJitter(brightness=0.41, contrast=0.41, saturation=0.25, hue=0.1),
+                                    transforms.ColorJitter(brightness=0.21, contrast=0.21, saturation=0.2, hue=0.1),
                                     transforms.ToTensor(),
                                     transforms.Normalize(means, std),
                                 ])
@@ -173,16 +179,27 @@ class loader(Dataset):
         plt.show()
 
 
+
+datanames_csvfiles = {"./../CityScapes/train.csv": 0.1,
+                      './../MSS_vids/data/images/Coche.csv': 0.1,
+                      
+                      "./../Kitti/training/train.csv": 0.1,
+
+                      './../MSS_vids/data/images/AutoBus.csv':0.1,
+                      
+                      './../MSS_vids/data/images/Helicoptero.csv':0.1,
+                      './../MSS_vids/data/images/Peaton.csv':0.1,
+                      './../MSS_vids/data/images/Video.csv':0.1}
 if __name__ == "__main__":
     root_dir   = "./../Kitti/training/"
     train_file = os.path.join(root_dir, "train.csv")
     train_data = loader(csv_file=train_file, phase='train')
 
     # show a batch
-    batch_size = 4
+    batch_size = 32
 
 
-    dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=False, num_workers=4)
+    dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=4)
     for i, batch in enumerate(dataloader):
         #np_b = batch['X'].numpy()
         #np_b = np_b.reshape((40,3,224,224))
