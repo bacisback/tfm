@@ -37,7 +37,7 @@ class DeNormalize(object):
        return tensor
 n_class    = 13
 img_Denorm = DeNormalize(means, std)
-batch_size = 2
+batch_size = 16
 epochs    = 500
 lr        = 1e-4
 momentum   = 0

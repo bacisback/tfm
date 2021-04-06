@@ -86,7 +86,7 @@ labels = [
     Label(  'license plate'        , -1 ,       -1 , 'vehicle'         , 7       , False        , True         , (  0,  0,142) ),
 ]
 MSS_translate = {-1:0, 255:0, 1:1, 2:2, 3:3, 4:3,
-                 5:3, 6:6, 7:7, 8:5, 9:8, 10:1, 11:9,
+                 5:3, 6:6, 7:7, 8:5, 9:8, 10:8, 11:9,
                  12:10, 13:10, 14:11, 15:12, 16:12,
                  17:12, 18:11, 19:11}
 
@@ -121,7 +121,6 @@ def parse_label():
 
                 #if os.path.exists(lab_name + '.npy'):
                 #    print("Skip %s" % (filename))
-                #    continue
                 print("Parse %s" % (filename))
                 img = os.path.join(city_dir, filename)
                 img = np.asarray(Image.open(img).convert('RGB'))

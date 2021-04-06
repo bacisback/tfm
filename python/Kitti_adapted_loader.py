@@ -16,7 +16,7 @@ from torchvision import utils
 from torchvision import transforms
 
 
-root_dir   = "./../Kitti/"
+root_dir   = "./../Kitti/training/"
 train_file = os.path.join(root_dir, "train.csv")
 
 means     = np.array([103.939, 116.779, 123.68]) / 255. # mean of three channels in the order of BGR
@@ -32,11 +32,11 @@ class KittiDataset(Dataset):
                             transforms.Resize(256),
                             transforms.RandomCrop(224),
                             transforms.RandomVerticalFlip(p=0.5),
-                            transforms.ToTensor(),
-                            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                            #transforms.ToTensor(),
+                            #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                         ])
         self.preprocess_lab = transforms.Compose([
-                            transforms.Resize(256, interpolation=transforms.InterpolationMode.NEAREST),
+                            transforms.Resize(256),
                             transforms.ToTensor()
                         ])
 
@@ -45,17 +45,18 @@ class KittiDataset(Dataset):
 
     def __getitem__(self, idx):
         img_name   = self.data.iloc[idx, 0]
-        input_tensor = self.preprocess(Image.open(img_name))
+        img = Image.open(img_name)
+        input_tensor = self.preprocess_img(img)
         label_name = self.data.iloc[idx, 1]
-        label      = self.preprocess_lab(np.load(label_name))
-
+        #label      = self.preprocess_lab(np.load(label_name))
+        """
         # create one-hot encoding
         h, w = label.size()
         target = torch.zeros(self.n_class, h, w)
         for c in range(self.n_class):
             target[c][label == c] = 1
-
-        sample = {'X': img, 'Y': target, 'l': label}
+        """
+        sample = {'X': img}
 
         return sample
 
@@ -80,18 +81,10 @@ if __name__ == "__main__":
     batch_size = 4
     for i in range(batch_size):
         sample = train_data[i]
-        print(i, sample['X'].size(), sample['Y'].size())
+        print(i, np.mean(sample['X']))
 
     dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=False, num_workers=4)
 
     for i, batch in enumerate(dataloader):
-        print(i, batch['X'].size(), batch['Y'].size())
-    
-        # observe 4th batch
-        if i == 3:
-            plt.figure()
-            show_batch(batch)
-            plt.axis('off')
-            plt.ioff()
-            plt.show()
-            break
+        print(i, batch['X'].size)
+   

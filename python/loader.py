@@ -39,8 +39,33 @@ from MSS_utils import index2color
 
 
 means=np.array([86.5628,86.6691,86.7348]) / 255
+means_K = np.array([0.39, 0.39, 0.38])
 std=[0.229, 0.224, 0.225]
+std_K = [1.33, 1.43, 1.44]
 
+label_translation= {0:0,
+                    1:1,#road
+                    2:2, #sidewalk
+                    3:3,#building
+                    4:3, #wall
+                    5:3,#billboard
+                    6:6, #pole
+                    7:7, #trafic light
+                    8:5, #trafic sign
+                    9:8, #vegetation
+                    10:8,#terrain
+                    11:9,#sky
+                    12:10,# pedestrian
+                    13:10,# rider
+                    14:11, #car
+                    15:12, #truck
+                    16:12, #bus
+                    17:12, #train
+                    18:11, #moto
+                    19:11, #bike
+                    20:1, #roadmarks
+                    21:0, #unknown
+                    }
 class DeNormalize(object):
     def __init__(self, mean, std):
         self.mean = mean
@@ -54,13 +79,31 @@ class DeNormalize(object):
 class loader(Dataset):
 
     def __init__(self, csv_file, phase, size=224):
-        self.data            = pd.read_csv(csv_file)
+        if isinstance(csv_file, dict):
+            self.data = None
+            for key in csv_file:
+                df = pd.read_csv(key)
+                if self.data is None:
+                    self.data = df.sample(frac = csv_file[key], random_state=0)
+                    
+                else:
+                    if csv_file[key] == 1:
+                        self.data = self.data.append(df)
+                    else:
+                        self.data = self.data.append(df.sample(frac = csv_file[key], random_state=0))
+        else:
+            self.data            = pd.read_csv(csv_file)
+        #print(self.data.head())
+        #print(self.data.tail())
+        print(len(self.data))
         self.phase           = phase
         self.size            = size
-        self.transform_input = transforms.Compose([
+        self.transform_MSS = transforms.Compose([
+                                    transforms.ColorJitter(brightness=0.21, contrast=0.21, saturation=0.2, hue=0.1),
                                     transforms.ToTensor(),
                                     transforms.Normalize(means, std),
                                 ])
+        
         self.transform_mask  = transforms.Compose([
                                     transforms.ToTensor(),
                                 ])
@@ -111,7 +154,24 @@ class loader(Dataset):
         img_name    = self.data.iloc[idx, 0]
         input_image = Image.open(img_name).convert('RGB')
         label_name  = self.data.iloc[idx, 1]
-        label       = np.load(label_name)
+        if "Synthia" in label_name:
+            """
+            image = Image.open(label_name)
+            labels = np.asarray(image.convert("RGB"))
+            labels = labels[:,:,0]
+            height, weight = labels.shape
+            label = np.zeros((height,weight))
+            
+            for h in range(height):
+                for w in range(weight):
+                    try:
+                        label[h,w] = label_translation[labels[h,w]]
+                    except:
+                        label[h,w] = 0
+            """
+            label       = np.load(label_name+".npy")
+        else:
+            label       = np.load(label_name)
         mask        = Image.fromarray(label.astype(np.uint8))
             
 
@@ -124,8 +184,7 @@ class loader(Dataset):
             # TO FILL:trasnform test data
             img, mask = self.test_transform(input_image, mask)
 
-        if self.transform_input is not None:
-            img = self.transform_input(img)
+        img = self.transform_MSS(img)
         if self.transform_mask is not None:
             mask = 255*self.transform_mask(mask)
     
@@ -160,23 +219,43 @@ class loader(Dataset):
 
         for i in range(batch_size):
             plt.subplot(2, batch_size/2, i+1)
+            plt.imshow(labels[i,...].squeeze(), interpolation='nearest')
+        plt.title('Labels')
+        plt.figure()
+        #labels = batch['Y'].cpu().numpy()
+
+        for i in range(batch_size):
+            plt.subplot(2, batch_size/2, i+1)
             plt.imshow(self.label_to_RGB(labels[i,...]), interpolation='nearest')
         plt.title('Labels')
         plt.show()
 
 
+
+datanames_csvfiles = {"./../CityScapes/train.csv": 0.1,
+                      './../MSS_vids/data/images/Coche.csv': 0.1,
+                      './../Synthia/train.csv': 1,
+                      "./../Kitti/training/train.csv": 0.1,
+
+                      './../MSS_vids/data/images/AutoBus.csv':0.1,
+                      
+                      './../MSS_vids/data/images/Helicoptero.csv':0.1,
+                      './../MSS_vids/data/images/Peaton.csv':0.1,
+                      './../MSS_vids/data/images/Video.csv':0.1}
 if __name__ == "__main__":
-    root_dir   = "./../CityScapes/"
+    root_dir   = "./../Kitti/training/"
     train_file = os.path.join(root_dir, "train.csv")
-    train_data = loader(csv_file=train_file, phase='train')
+    print("_".join(datanames_csvfiles.keys()))
+    train_data = loader(csv_file=datanames_csvfiles, phase='train')
 
     # show a batch
-    batch_size = 4
-    for i in range(batch_size):
-        sample = train_data[i]
-        print(i, sample['X'].size(), sample['Y'].size())
+    batch_size = 8
 
-    dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=False, num_workers=4)
+
+    dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=4)
     for i, batch in enumerate(dataloader):
+        #np_b = batch['X'].numpy()
+        #np_b = np_b.reshape((40,3,224,224))
+        #print(np.std(np_b[:,0,:,:]),np.std(np_b[:,1,:,:]),np.std(np_b[:,2,:,:]),np_b.shape)
         train_data.show_batch(batch)
 
