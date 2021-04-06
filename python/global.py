@@ -18,6 +18,33 @@ import os
 means=np.array([86.5628,86.6691,86.7348]) / 255
 std=[0.229, 0.224, 0.225]
 
+datanames_csvfiles = {"Cityscapes": "./../CityScapes/train.csv",
+                      "Cityscapes_test": "./../CityScapes/test.csv",
+                      "Coche": './../MSS_vids/data/images/Coche.csv',
+                      "Synthia": './../Synthia/train_np_labels.csv',
+                      "Kitti": "./../Kitti/training/train.csv",
+                      "MSS": './../MSS_vids/data/train.csv',
+                      "Bus": './../MSS_vids/data/images/AutoBus.csv',
+                      
+                      "Helicoptero": './../MSS_vids/data/images/Helicoptero.csv',
+                      "Peaton": './../MSS_vids/data/images/Peaton.csv',
+                      "Video": './../MSS_vids/data/images/Video.csv'}
+
+real_datasets_train = ["Kitti"]#, "Cityscapes"]
+synthetic_datasets = ["MSS", "Synthia"]
+proportions = [ 0.1, 0.15, 0.20, 0.25]
+
+batch_size = 8
+epochs     = 5
+lr         = 1e-4
+momentum   = 0
+w_decay    = 1e-5
+step_size  = 50
+gamma      = 0.5
+total = open("./resultados.csv", "w")
+total.write("train,test, pix accuracy, meanIoU, unlabeled, road, sidewalk, buildings, complements, billboards, pole, lights,vegetation, sky, person, car, bus\n")
+
+
 class DeNormalize(object):
     def __init__(self, mean, std):
        self.mean = mean
@@ -82,39 +109,29 @@ def show_batch(batch, name, model, flag):
     plt.title('Output')
     plt.savefig(name+"output.png")
 
-datanames_csvfiles = {"Cityscapes": "./../CityScapes/train.csv",
-                      "Coche": './../MSS_vids/data/images/Coche.csv',
-                      
-                      "Kitti": "./../Kitti/training/train.csv",
-
-                      "Bus": './../MSS_vids/data/images/AutoBus.csv',
-                      
-                      "Helicoptero": './../MSS_vids/data/images/Helicoptero.csv',
-                      "Peaton": './../MSS_vids/data/images/Peaton.csv',
-                      "Video": './../MSS_vids/data/images/Video.csv'}
-
-
-batch_size = 8
-epochs     = 5
-lr         = 1e-4
-momentum   = 0
-w_decay    = 1e-5
-step_size  = 50
-gamma      = 0.5
-total = open("./resultados.csv", "w")
-total.write("train,test, pix accuracy, meanIoU, unlabeled, road, sidewalk, buildings, complements, billboards, pole, lights,vegetation, sky, person, car, bus\n")
 
 class training:
     def __init__(self, train, test, model, plot):
         self.train_file = train
         
         self.test_file = test
-        train_data = loader(csv_file=datanames_csvfiles[train],
-                                  phase='train')
-        test_data  = loader(csv_file=datanames_csvfiles[test],
-                                  phase='test')                      
-        self.train_data = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=4)
-        self.test_data  = DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=4)
+        if isinstance(train, dict):
+            self.train_file = ""
+            train_dat = {}
+            for key in train:
+                self.train_file += str(key) + "-" + str(train[key]) + "_"
+                train_dat[datanames_csvfiles[key]]= train[key]
+            train_data = loader(csv_file=train_dat,
+                                phase='train')
+            test_data  = loader(csv_file=test,
+                                phase='test') 
+        else:
+            train_data = loader(csv_file=datanames_csvfiles[train],
+                                      phase='train')
+            test_data  = loader(csv_file=datanames_csvfiles[test],
+                                      phase='test')                      
+        self.train_data = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
+        self.test_data  = DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=4, drop_last=True)
         self.use_gpu    = torch.cuda.is_available()
         self.num_gpu    = list(range(torch.cuda.device_count()))
       
@@ -133,14 +150,14 @@ class training:
             self.model  = torch.load(model_file)
             self.model_path = model_file
             print("cargando:", model_file)
-        elif os.path.isfile(model_file+"_final_"+train):
-            self.model  = torch.load(model_file+"_final_"+train)
-            self.model_path = model_file+"_final_"+train
-            print("cargando:", model_file+"_final_"+train)
+        elif os.path.isfile(model_file+"_final_"+self.train_file):
+            self.model  = torch.load(model_file+"_final_"+self.train_file)
+            self.model_path = model_file+"_final_"+self.train_file
+            print("cargando:", model_file+"_final_"+self.train_file)
         else:
             if self.DL3:
                 self.model  =  torch.load("./models/DLscratch")
-            self.model_path = os.path.join("./models/", model)
+            self.model_path = model_file
             print("cargando:", self.model_path)
         if self.use_gpu:
             self.model = self.model.cuda()
@@ -163,7 +180,7 @@ class training:
                 optimizer.zero_grad()
 
                 inputs, labels = Variable(batch['X'].cuda()), Variable(batch['Y'].cuda())
-
+                #print(inputs.size())
                 outputs = self.model(inputs)
                 if self.DL3:
                     outputs = outputs["out"]
@@ -175,7 +192,7 @@ class training:
                 
 
                 
-                if iter % 50 == 0:
+                if iter % 500 == 0:
                     print("epoch{}, iter{}, loss: {}".format(epoch, iter, loss))
 
             scheduler.step()
@@ -183,14 +200,14 @@ class training:
             print("Finish epoch {}, time elapsed {}".format(epoch, time.time() - ts))
             self.val(epoch)
         if "final" in self.model_path:
-            torch.save(self.model, self.model_path)
+            torch.save(self.model, self.model_path+"_"+self.train_file)
         else:
-            torch.save(self.model, self.model_path+"_final_"+self.train_file)
+            torch.save(self.model, self.model_path+self.train_file)
         for batch in self.train_data:
-            show_batch(batch, "models/imgs/"+model+self.train_file+self.test_file+"_train_", self.model,self.DL3)
+            show_batch(batch, "models/imgs/train/"+self.train_file, self.model,self.DL3)
             break
         for batch in self.test_data:
-            show_batch(batch, "models/imgs/"+model+self.train_file+self.test_file+"_test_", self.model,self.DL3)
+            show_batch(batch, "models/imgs/test/"+self.train_file, self.model,self.DL3)
             break
             
 
@@ -227,11 +244,10 @@ class training:
         pixel_accs = np.array(pixel_accs).mean()
         meanIoU = np.nanmean(ious)
         print("epoch{}, pix_acc: {}, meanIoU: {}, IoUs: {}".format(epoch, pixel_accs, meanIoU, ious))
-        if meanIoU > self.iou:
-            #torch.save(self.model, self.model_path+"_"+self.train_file+"_"+self.test_file)
-            total.write("{},{},{},{},".format(self.train_file,self.test_file,pixel_accs, meanIoU))
-            total.write(",".join([str(a) for a in ious]) + "\n")
-
+        #torch.save(self.model, self.model_path+"_"+self.train_file+"_"+self.test_file)
+        total.write("{},{},{},{},".format(self.train_file,self.test_file,pixel_accs, meanIoU))
+        total.write(",".join([str(a) for a in ious]) + "\n")
+        torch.save(self.model, self.model_path+self.train_file)
 
 # borrow functions and modify it from https://github.com/Kaixhin/FCN-semantic-segmentation/blob/master/main.py
 # Calculates class intersections over unions
@@ -274,7 +290,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     trainer = training(args.train_file, args.test_file, args.model, args.plot)
     trainer.train(500)
-    """
+    
     for model in ['deeplabv3', 'FCN']:
         for key in datanames_csvfiles:
             for key_2 in datanames_csvfiles:
@@ -282,4 +298,14 @@ if __name__ == '__main__':
                     continue
                 trainer = training(key, key_2, model, 1)
                 trainer.train(25)
+    """
+    
+    for dataset in real_datasets_train:
+        train = {}
+        for proportion in proportions:
+            train[dataset] = proportion
+            train["Synthia"] = 1
+            print(train)
+            trainer = training(train,  "./../CityScapes/val.csv", 'deeplabv3', 1)
+            trainer.train(5)
     total.close()
