@@ -43,7 +43,7 @@ def pixel_acc(pred, target):
     total   = (target == target).sum()
     return correct / total
 
-def val(model, test_data, model_name, test_file):
+def val(model, test_data, model_name, test_file,DL=False):
         model.eval()
         total_ious = []
         pixel_accs = []
@@ -51,7 +51,7 @@ def val(model, test_data, model_name, test_file):
             inputs = Variable(batch['X'].cuda())
             
             outputs = model(inputs)
-            if "lab" in model_name:
+            if DL:
                 outputs = outputs["out"]
             output = outputs.data.cpu().numpy()
     
@@ -72,26 +72,29 @@ def val(model, test_data, model_name, test_file):
         total.write(",".join([str(a) for a in ious]) + "\n")
 
 
-datanames_csvfiles = {"Kitti": "./../Kitti/training/train.csv"}
-"""
-"Cityscapes_test": "./../CityScapes/val.csv",
+datanames_csvfiles = {"Cityscapes": "./../CityScapes/val.csv",
                       "Mapilliary": './../Mapilliary/val.csv',
-                      "Dron": './../semantic_drone_dataset/train.csv',
-"""
-total = open("./scratch_results_kitty", "w")
+                      "Kitti": "./../Kitti/training/train.csv"}
+
+total = open("./results/finetune_per_class_exp2_2.csv", "w")
 total.write("train,test, pix accuracy, meanIoU, unlabeled, road, sidewalk, buildings, complements, billboards, pole, lights,vegetation, sky, person, car, bus\n")
 
 models_dir = "./models/"
-deeplabv3_dir = os.path.join(models_dir, "deeplab/25epoch/")
+deeplabv3_dir = os.path.join(models_dir, "deeplab/finetune/")
 for model_name in os.listdir(deeplabv3_dir):
-    if "imgs" == model_name or "-1_" not in model_name:
+    if "imgs" == model_name:
         continue
-    model  =  torch.load( os.path.join(deeplabv3_dir, model_name))
-    model.cuda()
-    print(model_name)
+    try:
+    
+        model  =  torch.load( os.path.join(deeplabv3_dir, model_name))
+        model.cuda()
+    except:
+        print(model_name)
+        continue
     for key in datanames_csvfiles:
          
         data_test = loader(csv_file=datanames_csvfiles[key], phase='test') 
         data_test  = DataLoader(data_test, batch_size=8, shuffle=False, num_workers=4, drop_last=True)
-        val(model, data_test, os.path.join(deeplabv3_dir, model_name), key)       
+        val(model, data_test, model_name, key, True)
+       
 total.close()

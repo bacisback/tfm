@@ -93,8 +93,11 @@ class loader(Dataset):
                         self.data = self.data.append(df.sample(frac = csv_file[key], random_state=0))
         else:
             self.data            = pd.read_csv(csv_file)
-        #print(self.data.head())
+        #print(self.data.keys())
         #print(self.data.tail())
+        
+        self.data = self.data.dropna()
+        self.data = self.data.reset_index(drop=True)
         print(len(self.data))
         self.phase           = phase
         self.size            = size
@@ -152,8 +155,12 @@ class loader(Dataset):
 
     def __getitem__(self, idx):
         img_name    = self.data.iloc[idx, 0]
-        input_image = Image.open(img_name).convert('RGB')
         label_name  = self.data.iloc[idx, 1]
+        try:
+            input_image = Image.open(img_name).convert('RGB')
+        except:
+            print(img_name, label_name)
+        
         if "Synthia" in label_name:
             """
             image = Image.open(label_name)
@@ -172,7 +179,11 @@ class loader(Dataset):
             label       = np.load(label_name+".npy")
         else:
             label       = np.load(label_name)
-        mask        = Image.fromarray(label.astype(np.uint8))
+        if "npz" in label_name:
+            label = np.array(label['arr_0'], dtype=np.uint8)
+            mask = Image.fromarray(label)
+        else:
+            mask        = Image.fromarray(label.astype(np.uint8))
             
 
         # reduce mean
@@ -232,16 +243,16 @@ class loader(Dataset):
 
 
 
-datanames_csvfiles = {"./../CityScapes/train.csv": 0.1,
-                      './../MSS_vids/data/images/Coche.csv': 0.1,
-                      './../Synthia/train.csv': 1,
-                      "./../Kitti/training/train.csv": 0.1,
-
-                      './../MSS_vids/data/images/AutoBus.csv':0.1,
+datanames_csvfiles = {"./../CityScapes/train.csv": 0.01,
+                      './../MSS_vids/data/images/Coche.csv': 0.01,
+                      './../Synthia/train.csv': 0,
+                      "./../Kitti/training/train.csv": 0.001,
+                      './../semantic_drone_dataset/train_dron.csv':1,
+                      './../MSS_vids/data/images/AutoBus.csv':0.01,
                       
-                      './../MSS_vids/data/images/Helicoptero.csv':0.1,
-                      './../MSS_vids/data/images/Peaton.csv':0.1,
-                      './../MSS_vids/data/images/Video.csv':0.1}
+                      './../MSS_vids/data/images/Helicoptero.csv':0.01,
+                      './../MSS_vids/data/images/Peaton.csv':0.01,
+                      './../MSS_vids/data/images/Video.csv':0.01}
 if __name__ == "__main__":
     root_dir   = "./../Kitti/training/"
     train_file = os.path.join(root_dir, "train.csv")

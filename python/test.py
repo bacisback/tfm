@@ -37,7 +37,7 @@ class DeNormalize(object):
        return tensor
 n_class    = 13
 img_Denorm = DeNormalize(means, std)
-batch_size = 16
+batch_size = 1
 epochs    = 500
 lr        = 1e-4
 momentum   = 0
@@ -50,20 +50,20 @@ model_dir = "models"
 model_path = os.path.join(model_dir, configs)
 
 
-root_dir = "./../Kitti/training/"
+root_dir = './../Mapilliary/'
 train_file = os.path.join(root_dir, "train.csv")
-train_data = loader(csv_file=train_file, phase='train')
+train_data = loader(csv_file=train_file, phase='test')
 dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=8)
 
 
-model = torch.load("./models/deeplabv3")
+model = torch.load("./models/deeplab/finetune/MSS_complete-1_Synthia-1_Mapilliary-0.25_")
 use_gpu = torch.cuda.is_available()
 if use_gpu:
     model = model.cuda()
 model.eval()    
 
 
-means    = np.array([103.939, 116.779, 123.68]) / 255. # mean of three channels in the order of BGR
+means    = np.array([86.5628,86.6691,86.7348]) / 255 # mean of three channels in the order of BGR
 
 
 def label_to_RGB(image):
@@ -91,29 +91,33 @@ def show_batch(batch):
     for i in range(batch_size):
          image_np = (255*(img_Denorm(img_batch[i,...]).data.permute(1,2,0).cpu().numpy())).astype(np.uint8)
          img_pil = Image.fromarray(image_np)
-         plt.subplot(2, batch_size/2, i+1)
+         plt.subplot(1, 3, i+1)
          plt.imshow(img_pil, interpolation='nearest')
-    plt.title('Batch from dataloader')
+         plt.subplot(1, 3, i+1).set_title('RGB')
+         plt.axis('off')
+    #plt.title('Batch from dataloader')
 
-    plt.figure()
+    #plt.figure()
     labels = batch['Y'].cpu().numpy()
 
     for i in range(batch_size):
-         plt.subplot(2, batch_size/2, i+1)
+         plt.subplot(1, 3, 2)
          plt.imshow(label_to_RGB(labels[i,...]), interpolation='nearest')
-    plt.title('Labels')
+         plt.subplot(1, 3, 2).set_title('GT')
+         plt.axis('off')
+    #plt.title('Labels')
 
     outputs = model(batch['X'].cuda())['out']
     output = outputs.data.cpu().numpy()
 
     N, _, h, w = output.shape
     pred = output.transpose(0, 2, 3, 1).reshape(-1, n_class).argmax(axis=1).reshape(N, h, w)
-    plt.figure()
+    #plt.figure()
     for i in range(N):
-        plt.subplot(2, len(labels)/2, i+1)
+        plt.subplot(1, 3, 3)
         plt.imshow(label_to_RGB(pred[i,...]), interpolation='nearest')
-    plt.title('Output')
-    plt.show()
+        plt.subplot(1, 3, 3).set_title('Output')
+        plt.axis('off')
 
     
 

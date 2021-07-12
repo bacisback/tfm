@@ -18,11 +18,11 @@ import re
 #############################
 root_dir          = "./../MSS_vids/"
 video_dir         = os.path.join(root_dir, "Videos")    # videos
-data_dir          = os.path.join(root_dir, "data/")      # Data for train and test
+data_dir          = os.path.join(root_dir, "data5/")      # Data for train and test
 images_dir        = os.path.join(data_dir, "images/")    # train label
 label_dir         = os.path.join(data_dir, "labels/")    # train label
 train_label_file  = os.path.join(data_dir, "train.csv") # train file
-
+frame_rate        = 25
 
 Label = namedtuple('Label', [
 				   'name', 
@@ -31,19 +31,25 @@ Label = namedtuple('Label', [
 
 labels = [ # name                      id       color
 	Label(  'unlabeled'              ,  0  , (  0,  0,  0)       ),
+	Label(  'road2'                   ,  1  , (  109,  95,  144)  ),    
 	Label(  'road'                   ,  1  , (  102,  51,  153)  ),
 	Label(  'sidewalk_2'             ,  2  , (  160,  10,   90)  ),
 	Label(  'sidewalk'               ,  2  , (  255,  20,  147)  ),
+     Label(  'buildings_2'            ,  3  , (  85,    103,  117)  ),
 	Label(  'buildings_2'            ,  3  , (  63,    72,  67)  ),
 	Label(  'buildings'              ,  3  , (  119,  136,  153) ),
 	Label(  'buildings (complements)',  4  , (  112,  128,  144) ),
+     Label(  'buildings2(complements)',  4  , (  140,  166,  187) ),
 	Label(  'billboards'             ,  5  , (  188,  143,  143) ),
 	Label(  'pole'                   ,  6  , (  169,  169,  169) ),
 	Label(  'traffic light'          ,  7  , (  255,  255,  0)   ),
 	Label(  'vegetation_2'           ,  8  , (  13,  75,    8)   ),
 	Label(  'vegetation'             ,  8  , (  34,  139,  34)   ),
 	Label(  'sky'                    ,  9  , (  0,  191,  255)   ),
+     Label(  'person'                 ,  10 , (  133,  0,  0)     ),
+     Label(  'person'                 ,  10 , (  162,  20,  36)     ),
 	Label(  'person'                 ,  10 , (  255,  0,  0)     ),
+     Label(  'car2'                   ,  11 , (  0,  1,  65)     ),
 	Label(  'car'                    ,  11 , (  0,  0,  128)     ),
 	Label(  'bus_2'                  ,  12 , (  0,    68,  63)   ),
 	Label(  'bus'                    ,  12 , (  0,  128,  128)   )
@@ -71,10 +77,10 @@ def trim_video():
 	
 	for idx, name in enumerate(os.listdir(video_dir)):
 		if 'avi' not in name or "RGB" not in name:
-			print(name)
+			#print(name)
 			continue
 
-		
+		print(name)
 		filename_dat = os.path.join(video_dir, name)
 		filename_sem = "s" + name[1:-7] + "Semantica.avi" #los videos en RGB vienen con Semantica en mayusculas y acabados en _RGB
 		filename_sem = os.path.join(video_dir, filename_sem)
@@ -92,13 +98,15 @@ def trim_video():
 			os.makedirs(category_dir_labels)
 
 		i = 0
+		
 		cap= cv2.VideoCapture(filename_sem)
 
 		while(cap.isOpened()):
-			if i%25 != 0:
+			ret, frame = cap.read()
+			if i%frame_rate != 0:
 				i+=1
 				continue
-			ret, frame = cap.read()
+			
 			if ret == False:
 				break
 			
@@ -108,11 +116,12 @@ def trim_video():
  
 		cap.release()
 		cv2.destroyAllWindows()
+		
 		i = 0
 		cap= cv2.VideoCapture(filename_dat)
 		while(cap.isOpened()):
 			ret, frame = cap.read()
-			if i%25 != 0:
+			if i%frame_rate != 0:
 				i+=1
 				continue
 			if ret == False:
@@ -191,11 +200,14 @@ def parse_labels():
 						idx_mat[h, w] = 0
 			"""
 			plt.subplot(1,2,1)
-			plt.imshow(Image.fromarray(label_to_RGB(idx_mat), 'RGB'), interpolation='nearest')
+			plt.imshow(corrected, interpolation='nearest')
 			plt.subplot(1,2,2)
 			plt.imshow(frame, interpolation='nearest')
-			plt.show()"""
-			
+			plt.show()
+			)"""
+			corrected = Image.fromarray(label_to_RGB(idx_mat), 'RGB')
+
+			cv2.imwrite(filename_sem,np.asarray(corrected))
 			idx_mat = idx_mat.astype(np.uint8)
 			label_name = os.path.join(category_dir_labels, name)
 			np.save(label_name, idx_mat)

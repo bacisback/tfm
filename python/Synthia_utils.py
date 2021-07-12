@@ -26,7 +26,7 @@ label_translation= {0:0,
                     2:2, #sidewalk
                     3:3,#building
                     4:3, #wall
-                    5:3,#billboard
+                    5:5,#billboard
                     6:6, #pole
                     7:7, #trafic light
                     8:5, #trafic sign

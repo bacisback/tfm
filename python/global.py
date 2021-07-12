@@ -25,14 +25,21 @@ datanames_csvfiles = {"Cityscapes": "./../CityScapes/train.csv",
                       "Kitti": "./../Kitti/training/train.csv",
                       "MSS": './../MSS_vids/data/train.csv',
                       "Bus": './../MSS_vids/data/images/AutoBus.csv',
-                      
+                      "Dron": './../semantic_drone_dataset/train.csv',
                       "Helicoptero": './../MSS_vids/data/images/Helicoptero.csv',
                       "Peaton": './../MSS_vids/data/images/Peaton.csv',
-                      "Video": './../MSS_vids/data/images/Video.csv'}
+                      "Video": './../MSS_vids/data/images/Video.csv',
+                      "MSS5": './../MSS_vids/data5/train.csv',
+                      "Coche5": './../MSS_vids/data5/images/Coche.csv',
+                      "Bus5": './../MSS_vids/data5/images/AutoBus.csv',
+                      "Helicoptero5": './../MSS_vids/data5/images/Helicoptero.csv',
+                      "Peaton5": './../MSS_vids/data5/images/Peaton.csv',
+                      "Video5": './../MSS_vids/data5/images/Video.csv',
+                      "Mapilliary": './../Mapilliary/train.csv'}
 
-real_datasets_train = ["Kitti", "Cityscapes"]
-synthetic_datasets = ["MSS", "Synthia", "Coche", "Bus", "Peaton", "Video", "Helicoptero"]
-proportions = [0.05, 0.1, 0.15, 0.20, 0.25]
+real_datasets_train = [ "Cityscapes" ] #"Dron""Kitti",","Mapilliary"
+synthetic_datasets = ["Helicoptero5",  "MSS", "Coche", "Bus", "Peaton", "Video", "Helicoptero", "MSS5", "Coche5", "Bus5", "Peaton5", "Video5" ] #"Synthia",
+proportions = [0.05, 0.15, 0.25]#
 
 batch_size = 8
 epochs     = 5
@@ -41,7 +48,9 @@ momentum   = 0
 w_decay    = 1e-5
 step_size  = 50
 gamma      = 0.5
-total = open("./resultados.csv", "w")
+file_name = "./resultados_synthia.csv"
+
+total = open("./ej2_val_CS.csv", "w")
 total.write("train,test, pix accuracy, meanIoU, unlabeled, road, sidewalk, buildings, complements, billboards, pole, lights,vegetation, sky, person, car, bus\n")
 
 
@@ -138,14 +147,19 @@ class training:
         weights = torch.Tensor([[0.9999, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 0.9439, 0.1106, 1.0000,
          1.0000, 0.9999, 1.0000, 0.9455]])
 
-        self.criterion = nn.CrossEntropyLoss(weight=weights.cuda())
+        self.criterion = nn.CrossEntropyLoss(weight=weights.cuda(), ignore_index=0)
         self.model_dir  = "./models"
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
 
-        model_file      = os.path.join(self.model_dir, model)
-        print(model_file)
+        
         self.DL3        = "lab" in model
+        if self.DL3:
+            model_file      = os.path.join(self.model_dir, "deeplab/25epoch/")
+        else:
+            model_file      = os.path.join(self.model_dir, "FCN/")
+        model_file      = os.path.join(model_file, self.train_file)
+        print(model_file)
         if os.path.isfile(model_file):  
             self.model  = torch.load(model_file)
             self.model_path = model_file
@@ -154,6 +168,10 @@ class training:
             self.model  = torch.load(model_file+"_final_"+self.train_file)
             self.model_path = model_file+"_final_"+self.train_file
             print("cargando:", model_file+"_final_"+self.train_file)
+        elif os.path.isfile(os.path.join(self.model_dir, "deeplab/")+"deeplabv3"+self.train_file):
+            self.model  = torch.load(os.path.join(self.model_dir, "deeplab/")+"deeplabv3"+self.train_file)
+            self.model_path = model_file
+            print("cargando:", os.path.join(self.model_dir, "deeplab/")+"deeplabv3"+self.train_file)
         else:
             if self.DL3:
                 self.model  =  torch.load("./models/DLscratch")
@@ -202,19 +220,20 @@ class training:
                     print("epoch{}, iter{}, loss: {}".format(epoch, iter, loss))
 
             scheduler.step()
-            text = open(self.model_path+self.train_file+".txt", "w")
-            text.write(str(epoch))
-            text.close()
-            torch.save(self.model, self.model_path+self.train_file)
+            #text = open(self.model_path+self.train_file+".txt", "w")
+            #text.write(str(epoch))
+            #text.close()
+            torch.save(self.model, self.model_path)
             print("Finish epoch {}, time elapsed {}".format(epoch, time.time() - ts))
         self.val(epoch)
+        """
         for batch in self.train_data:
             show_batch(batch, "models/imgs/train/"+self.train_file, self.model,self.DL3)
             break
         for batch in self.test_data:
             show_batch(batch, "models/imgs/test/"+self.train_file, self.model,self.DL3)
             break
-            
+        """ 
 
 
     def val(self, epoch):
@@ -304,7 +323,6 @@ if __name__ == '__main__':
                 trainer = training(key, key_2, model, 1)
                 trainer.train(25)
     """
-    
     for dataset in real_datasets_train:
         for syn in synthetic_datasets:
             train = {}
@@ -312,6 +330,6 @@ if __name__ == '__main__':
                 train[dataset] = proportion
                 train[syn] = 1
                 print(train)
-                trainer = training(train,  "./../CityScapes/val.csv", 'FCN', 1)
-                trainer.train(5)
+                trainer = training(train,  "./../CityScapes/val.csv", 'deeplabv3', 1)
+                trainer.train(25)  
     total.close()
