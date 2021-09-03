@@ -39,61 +39,45 @@ Label = namedtuple('Label', [
                    'color'])
 
 labels = [ # name                      id       color
-    Label(  'unlabeled'              ,  0  , (  -3340,  -253250,  -2352350)       ),
-    Label(  'road2'                  ,  1  , (  109,  95,  144)  ),
-    Label(  'road2'                  ,  1  , (  114,  98,  148)  ),
-    Label(  'road2'                  ,  1  , (  144,  44,   90)  ),
-    Label(  'road2'                  ,  1  , (  51,  22,   78)  ),
-    Label(  'road2'                  ,  1  , (  76,  61,   92)  ),       
-    Label(  'road'                   ,  1  , (  102,  51,  153)  ),
-    Label(  'sidewalk2'              ,  2  , (  144,  20,  229)  ),
+    Label(  'road'                  ,  1  , (  51,  22,   78)  ),
     Label(  'sidewalk2'              ,  2  , (  140,  3,  71)  ),
     Label(  'sidewalk'               ,  2  , (  255,  20,  147)  ),
-    Label(  'buildings_2'            ,  3  , (  74,    90,  105)  ),
-    Label(  'buildings_2'            ,  3  , (  85,    103,  117)  ),
     Label(  'buildings_2'            ,  3  , (  61,    70,  77)  ),
-    Label(  'buildings_2'            ,  3  , (  63,    72,  67)  ),
-    Label(  'buildings'              ,  3  , (  119,  136,  153) ),
     Label(  'buildings (complements)',  3  , (  112,  128,  144) ),
-    Label(  'buildings (complements)',  3  , (  113,  128,  147) ),
-    Label(  'buildings2(complements)',  3  , (  140,  166,  187) ),
     Label(  'billboards'             ,  5  , (  188,  143,  143) ),
-    Label(  'pole'                   ,  6  , (  198,  159,  179) ),
-    Label(  'pole'                   ,  6  , (  169,  169,  176) ),
-    Label(  'traffic light'          ,  7  , (  196,  209,  129)   ),
+    Label(  'pole'                   ,  6  , (  179,  169,  176) ),
     Label(  'traffic light'          ,  7  , (  255,  255,  0)   ),
     Label(  'vegetation_2'           ,  8  , (  13,  75,    8)   ),
-    Label(  'vegetation'             ,  8  , (  34,  139,  34)   ),
+    Label(  'vegetation_2'           ,  8  , (  45,  75,    45)   ),
     Label(  'sky'                    ,  9  , (  0,  191,  255)   ),
+    Label(  'sky'                    ,  9  , (  96,  135,  142)   ),
     Label(  'person'                 ,  10 , (  133,  0,  0)     ),
     Label(  'person'                 ,  10 , (  162,  20,  36)     ),
     Label(  'person'                 ,  10 , (  255,  0,  0)     ),
     Label(  'car2'                   ,  11 , (  4,  20,  82)     ),
     Label(  'car2'                   ,  11 , (  0,  1,  65)     ),
-    Label(  'car2'                   ,  11 , (  60,  80,  126)     ),
     Label(  'car'                    ,  11 , (  0,  0,  128)     ),
-    Label(  'bus_2'                  ,  12 , (  0,    68,  63)   ),
-    Label(  'bus'                    ,  12 , (  0,  128,  128)   )
+    Label(  'bus_2'                  ,  12 , (  0,    68,  63)   )
     ]
 
 color2index = {}
 index2color = {}
 colors = []
-id_list = []
+id_list = {}
 
-for obj in labels:
+for i, obj in enumerate(labels):
         idx   = obj.id
         label = obj.name
         color = obj.color
         colors.append(color)
         color2index[color] = idx
         index2color[idx] = color
-        id_list.append(idx)
+        id_list[i] = idx
 colors = np.array(colors)
 for dir in [video_dir, data_dir, label_dir, images_dir]:
     if not os.path.exists(dir):
         os.makedirs(dir)
-print(index2color)
+print(id_list)
 def label_to_RGB(image):
     height, weight = image.shape
 
@@ -112,30 +96,38 @@ def color_dist(color, colors):
     results = np.sqrt((((512+rmean)*r*r) //18) + 4*g*g + (((767-rmean)*b*b)//16))"""
     results = np.sqrt((color[0]-colors[:,0])**2+(color[2]-colors[:,2])**2+(color[1]-colors[:,1])**2)
     #print(results)
-    return id_list[np.argmin(results)]
+    argmin = np.argmin(results)
+    if results[argmin] > 10:
+        return 0
+    return id_list[argmin]
 
 def parse_label(frame):
-    height, weight, _ = frame.shape
-    idx_mat = np.zeros((height, weight))
-
-    for h in range(height):
-        for w in range(weight):
-            color = list(frame[h, w])
-            min_ind = color_dist(color, colors)
-            try:
-                #index = color2index[color]
-                idx_mat[h, w] = min_ind
-            except:
-                # no index, assign to void
-                idx_mat[h, w] = 0
+    height, width, _ = frame.shape
+    print(frame.shape)
+    matrix = np.swapaxes(np.swapaxes(frame, 0,2), 1,2)
+    print(frame.shape)
+    size = height*width
+    distance = []
+    for color in colors:
+        color = np.repeat(color, size).reshape((3, height, width))
+        #print(color)
+        #break
+        dist = np.sum((color - matrix)**2,0)
+        distance.append(dist)
+    distance = np.array(distance)
+    print(distance.shape)
+    idx_mat = np.argmin(distance, 0)
+    
+    idx_mat = np.vectorize(id_list.get)(idx_mat)
+    #print(idx_mat)
     #idx_mat = generic_filter(idx_mat, modal, (3, 3))
-    """
+    
     plt.subplot(1,2,1)
-    plt.imshow(Image.fromarray(label_to_RGB(idx_mat), 'RGB'), interpolation='nearest')
+    plt.imshow(idx_mat)
     plt.subplot(1,2,2)
-    plt.imshow(Image.fromarray(frame, 'RGB'), interpolation='nearest')
+    plt.imshow(frame)
     plt.show()
-    """
+    #cv2.cvtColor(np.float32()/255, cv2.COLOR_RGB2HSV)
     return idx_mat
 
 
@@ -170,7 +162,7 @@ def trim_video():
                 #print(os.path.join(sem_category_cv, video[:-8] + "_0.jpg"))
                 filename_dat = os.path.join(curriculum_dir, video)
                 filename_sem = os.path.join(curriculum_dir, video[:-7]+ "Semantica.avi")
-                """
+                
                 i = 0
                 cap= cv2.VideoCapture(filename_sem)
 
@@ -179,25 +171,27 @@ def trim_video():
                     ret, frame = cap.read()
                     if ret == False:
                         break
-                    if os.path.exists(os.path.join(sem_category_cv, video[:-8] + "_"+ str(i) +".npy")):# or i%2!=0: #i%11 != 0: or
+                    sem_name = os.path.join(sem_category_cv, video[:-8] + "_"+ str(i) +".jpg")
+                    if os.path.exists(sem_name):# or i%2!=0: #i%11 != 0: or
                         i += 1
                         continue
+                    cv2.imwrite(sem_name, frame)
                     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    labels = parse_label(frame)
-                    image_name = os.path.join(sem_category_cv, video[:-8] + "_" + str(i))
-                    img = Image.fromarray(label_to_RGB(labels), 'RGB')
+                    #labels = parse_label(frame)
+                    #image_name = os.path.join(sem_category_cv, video[:-8] + "_" + str(i))
+                    #img = Image.fromarray(label_to_RGB(labels), 'RGB')
                    
                     #real_name = os.path.join(img_category_cv, video[:-8] + "_" +str(i))
-                    np.save(image_name, labels)
-                    img.save(image_name + '.jpg')
-                    cv2.imwrite(os.path.join(sem_category_cv,"unprocessed/" + video[:-8] + "_" + str(i)) + '.jpg',cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+                    #np.save(image_name, labels)
+                    #img.save(image_name + '.jpg')
+                    #cv2.imwrite(os.path.join(sem_category_cv,"unprocessed/" + video[:-8] + "_" + str(i)) + '.jpg',cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
                     #total.write("{},{}\n".format(real_name+ '.jpg', image_name + '.npy'))
                     i+=1
                     
                         
                 cap.release()
                 cv2.destroyAllWindows()
-                """
+                
                 i = 0
                 cap= cv2.VideoCapture(filename_dat)
                 while(cap.isOpened()):
@@ -226,13 +220,16 @@ def create_csv():
             sem_category_cv = os.path.join(sem_category, amount_cars)
             for img in os.listdir(img_category_cv):
                 real_name = os.path.join(img_category_cv, img)
-                label_name = os.path.join(sem_category_cv, img[:-3]+ "npy")
+                label_name = os.path.join(sem_category_cv, img)
+                img = np.array(Image.open(label_name).convert("RGB"))
+                labels = parse_label(img)
+                np.save(label_name[:-4], labels)
                 if os.path.isfile(real_name) and os.path.isfile(label_name):
-                    total.write("{},{}\n".format(real_name, label_name))
+                    total.write("{},{}\n".format(real_name, label_name[:-4]+".npy"))
     total.close()
                 
 if __name__ == '__main__':
-    trim_video()
+    #trim_video()
     create_csv()
     
     
